@@ -4,30 +4,41 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Timeline Studio</title>
+    <meta name="description" content="A sleek, interactive timeline builder for planning events, milestones, and projects." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div id="app" class="app">
-      <aside class="rail" aria-label="Project tools">
-        <div class="brand" aria-hidden="true">TL</div>
-        <button class="icon-button" id="newProjectBtn" title="New project" aria-label="New project">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-        </button>
-        <button class="icon-button" id="renameProjectBtn" title="Rename project" aria-label="Rename project">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16.5 4.5 3 3L8 19H5v-3L16.5 4.5Z" /><path d="m14 7 3 3" /></svg>
-        </button>
-        <button class="icon-button" id="duplicateProjectBtn" title="Duplicate project" aria-label="Duplicate project">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h11v11H8z" /><path d="M5 16H4V4h12v1" /></svg>
-        </button>
-        <button class="icon-button danger" id="deleteProjectBtn" title="Delete project" aria-label="Delete project">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16" /><path d="M10 11v6M14 11v6" /><path d="M6 7l1 14h10l1-14" /><path d="M9 7V4h6v3" /></svg>
-        </button>
-      </aside>
-
       <main class="shell">
         <header class="topbar">
           <div class="project-strip">
-            <select id="projectSelect" class="project-select" aria-label="Project"></select>
+            <div class="project-actions">
+              <select id="projectSelect" class="project-select" aria-label="Project"></select>
+              <button class="tool-button" id="projectMenuBtn" title="Project options" aria-label="Project options">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" /></svg>
+              </button>
+              <div class="overflow-menu" id="projectMenu" hidden>
+                <button type="button" id="newProjectBtn">
+                  <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+                  New project
+                </button>
+                <button type="button" id="renameProjectBtn">
+                  <svg viewBox="0 0 24 24"><path d="m16.5 4.5 3 3L8 19H5v-3L16.5 4.5Z" /><path d="m14 7 3 3" /></svg>
+                  Rename
+                </button>
+                <button type="button" id="duplicateProjectBtn">
+                  <svg viewBox="0 0 24 24"><path d="M8 8h11v11H8z" /><path d="M5 16H4V4h12v1" /></svg>
+                  Duplicate
+                </button>
+                <button type="button" class="danger-text" id="deleteProjectBtn">
+                  <svg viewBox="0 0 24 24"><path d="M4 7h16" /><path d="M10 11v6M14 11v6" /><path d="M6 7l1 14h10l1-14" /><path d="M9 7V4h6v3" /></svg>
+                  Delete
+                </button>
+              </div>
+            </div>
             <span id="projectMeta" class="project-meta"></span>
           </div>
 
@@ -38,19 +49,14 @@
             <button class="tool-button" id="resetViewBtn" title="Reset view" aria-label="Reset view">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 3-6.2" /><path d="M4 4v6h6" /></svg>
             </button>
-            <button class="tool-button" id="focusBtn" title="Focus selected event" aria-label="Focus selected event">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h4M16 12h4M12 4v4M12 16v4" /><circle cx="12" cy="12" r="3" /></svg>
-            </button>
-            <button class="tool-button" id="collapseAllBtn" title="Collapse cards" aria-label="Collapse cards">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9h8M8 15h8" /><path d="M4 5h16v14H4z" /></svg>
-            </button>
-            <button class="tool-button text-tool" id="pastToggleBtn" title="Allow past dates" aria-label="Allow past dates">PA</button>
-            <button class="tool-button text-tool active" id="gridToggleBtn" title="Snap cards to grid" aria-label="Snap cards to grid">GR</button>
             <button class="tool-button" id="importBtn" title="Import JSON" aria-label="Import JSON">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
             </button>
-            <button class="tool-button" id="exportBtn" title="Export Git-friendly JSON" aria-label="Export Git-friendly JSON">
+            <button class="tool-button" id="exportBtn" title="Export JSON" aria-label="Export JSON">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3" /><path d="m7 8 5-5 5 5" /><path d="M5 21h14" /></svg>
+            </button>
+            <button class="tool-button" id="themeToggleBtn" title="Toggle theme" aria-label="Toggle theme">
+              <svg viewBox="0 0 24 24" aria-hidden="true" id="themeIcon"><path d="M12 3a9 9 0 1 0 0 18 7 7 0 0 1 0-18Z" /></svg>
             </button>
           </div>
 
@@ -91,6 +97,22 @@
               </div>
               <div id="categoryList" class="category-list"></div>
             </section>
+
+            <section class="dock-section">
+              <div class="dock-head">
+                <span>Settings</span>
+              </div>
+              <div class="settings-list">
+                <div class="setting-row">
+                  <span>Snap to grid</span>
+                  <button class="toggle-switch active" id="gridToggleBtn" type="button" aria-label="Snap cards to grid"></button>
+                </div>
+                <div class="setting-row">
+                  <span>Allow past dates</span>
+                  <button class="toggle-switch" id="pastToggleBtn" type="button" aria-label="Allow past dates"></button>
+                </div>
+              </div>
+            </section>
           </aside>
         </div>
       </main>
@@ -123,63 +145,64 @@
             <span>Category</span>
             <select id="eventCategory"></select>
           </label>
-          <label class="field">
-            <span>Width</span>
-            <input id="eventWidth" type="number" min="180" max="720" step="10" />
-          </label>
-          <label class="field">
-            <span>Height</span>
-            <input id="eventHeight" type="number" min="112" max="640" step="10" />
-          </label>
           <label class="field span-2">
-            <span>Text / Markdown</span>
-            <textarea id="eventBody" rows="7"></textarea>
+            <span>Description</span>
+            <textarea id="eventBody" rows="5" placeholder="Supports **bold**, *italic*, and - lists"></textarea>
           </label>
         </div>
 
-        <div class="editor-row">
-          <div class="segmented" aria-label="Text effects">
-            <button type="button" id="boldBtn" title="Bold" aria-label="Bold">B</button>
-            <button type="button" id="italicBtn" title="Italic" aria-label="Italic"><em>I</em></button>
+        <details class="advanced-options" id="advancedOptions">
+          <summary>More options</summary>
+          <div class="advanced-content">
+            <div class="field-grid">
+              <label class="field">
+                <span>Width</span>
+                <input id="eventWidth" type="number" min="180" max="720" step="10" />
+              </label>
+              <label class="field">
+                <span>Height</span>
+                <input id="eventHeight" type="number" min="112" max="640" step="10" />
+              </label>
+            </div>
+            <div class="editor-row">
+              <label class="compact-field">
+                <span>Size</span>
+                <input id="fontSize" type="range" min="12" max="28" step="1" />
+              </label>
+              <label class="compact-field">
+                <span>Align</span>
+                <select id="textAlign">
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </label>
+              <label class="compact-field">
+                <span>Color</span>
+                <input id="textColor" type="color" />
+              </label>
+            </div>
+            <div class="toggle-row">
+              <label class="check-field">
+                <input id="lockDateInput" type="checkbox" />
+                <span>Lock date</span>
+              </label>
+              <label class="check-field">
+                <input id="collapsedInput" type="checkbox" />
+                <span>Start collapsed</span>
+              </label>
+            </div>
+            <div class="image-row">
+              <label class="file-button">
+                <input id="imageInput" type="file" accept="image/*" hidden />
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z" /><path d="m4 16 5-5 4 4 2-2 5 5" /><path d="M14 9h.01" /></svg>
+                <span>Image</span>
+              </label>
+              <button type="button" class="quiet-button" id="removeImageBtn">Remove image</button>
+              <img id="imagePreview" class="image-preview" alt="" hidden />
+            </div>
           </div>
-          <label class="compact-field">
-            <span>Size</span>
-            <input id="fontSize" type="range" min="12" max="28" step="1" />
-          </label>
-          <label class="compact-field">
-            <span>Align</span>
-            <select id="textAlign">
-              <option value="left">Left</option>
-              <option value="center">Center</option>
-              <option value="right">Right</option>
-            </select>
-          </label>
-          <label class="compact-field">
-            <span>Text</span>
-            <input id="textColor" type="color" />
-          </label>
-        </div>
-
-        <div class="toggle-row">
-          <label class="check-field">
-            <input id="lockDateInput" type="checkbox" />
-            <span>Lock date</span>
-          </label>
-          <label class="check-field">
-            <input id="collapsedInput" type="checkbox" />
-            <span>Collapsed card</span>
-          </label>
-        </div>
-
-        <div class="image-row">
-          <label class="file-button">
-            <input id="imageInput" type="file" accept="image/*" hidden />
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z" /><path d="m4 16 5-5 4 4 2-2 5 5" /><path d="M14 9h.01" /></svg>
-            <span>Image</span>
-          </label>
-          <button type="button" class="quiet-button" id="removeImageBtn">Remove image</button>
-          <img id="imagePreview" class="image-preview" alt="" hidden />
-        </div>
+        </details>
 
         <div class="modal-actions">
           <button type="button" class="quiet-button danger-text" id="deleteEventBtn">Delete</button>

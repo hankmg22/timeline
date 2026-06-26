@@ -2,6 +2,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const BASE_DAY_PX = 76;
 const SNAP_GRID = 12;
 const STORAGE_KEY = "timeline-studio-projects-v1";
+const THEME_KEY = "timeline-studio-theme";
 const VERSION = 2;
 
 const defaultCategorySeeds = [
@@ -35,15 +36,17 @@ const els = {
     renameProject: document.getElementById("renameProjectBtn"),
     duplicateProject: document.getElementById("duplicateProjectBtn"),
     deleteProject: document.getElementById("deleteProjectBtn"),
+    projectMenu: document.getElementById("projectMenuBtn"),
     addToday: document.getElementById("addTodayBtn"),
     resetView: document.getElementById("resetViewBtn"),
-    focus: document.getElementById("focusBtn"),
-    collapseAll: document.getElementById("collapseAllBtn"),
     pastToggle: document.getElementById("pastToggleBtn"),
     gridToggle: document.getElementById("gridToggleBtn"),
     import: document.getElementById("importBtn"),
     export: document.getElementById("exportBtn"),
+    themeToggle: document.getElementById("themeToggleBtn"),
   },
+  projectMenu: document.getElementById("projectMenu"),
+  themeIcon: document.getElementById("themeIcon"),
   eventModal: document.getElementById("eventModal"),
   eventForm: document.getElementById("eventForm"),
   eventModalTitle: document.getElementById("eventModalTitle"),
@@ -53,8 +56,6 @@ const els = {
   eventWidth: document.getElementById("eventWidth"),
   eventHeight: document.getElementById("eventHeight"),
   eventBody: document.getElementById("eventBody"),
-  boldBtn: document.getElementById("boldBtn"),
-  italicBtn: document.getElementById("italicBtn"),
   fontSize: document.getElementById("fontSize"),
   textAlign: document.getElementById("textAlign"),
   textColor: document.getElementById("textColor"),
@@ -64,6 +65,7 @@ const els = {
   imagePreview: document.getElementById("imagePreview"),
   removeImage: document.getElementById("removeImageBtn"),
   deleteEvent: document.getElementById("deleteEventBtn"),
+  advancedOptions: document.getElementById("advancedOptions"),
   projectModal: document.getElementById("projectModal"),
   projectForm: document.getElementById("projectForm"),
   projectModalTitle: document.getElementById("projectModalTitle"),
@@ -91,7 +93,14 @@ const state = {
   projectMode: "new",
   editingCategoryId: null,
   miniMapRange: { minDay: 0, maxDay: 60 },
+  ghostDotVisible: false,
+  ghostDotDate: "",
+  ghostDotScreenX: 0,
+  ghostDotScreenY: 0,
+  theme: "dark",
 };
+
+/* ─── Utility ─── */
 
 function uid(prefix) {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}-${Date.now().toString(36)}`;
@@ -197,6 +206,40 @@ function safeFileName(value) {
     .slice(0, 64) || "timeline";
 }
 
+/* ─── Theme ─── */
+
+function initTheme() {
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === "light" || stored === "dark") {
+    state.theme = stored;
+  } else {
+    state.theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  }
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.setAttribute("data-theme", state.theme);
+  updateThemeIcon();
+}
+
+function toggleTheme() {
+  state.theme = state.theme === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, state.theme);
+  applyTheme();
+}
+
+function updateThemeIcon() {
+  if (!els.themeIcon) return;
+  if (state.theme === "dark") {
+    els.themeIcon.innerHTML = '<path d="M12 3a9 9 0 1 0 0 18 7 7 0 0 1 0-18Z" />';
+  } else {
+    els.themeIcon.innerHTML = '<circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />';
+  }
+}
+
+/* ─── Project Data ─── */
+
 function activeProject() {
   return state.projects.find((project) => project.id === state.activeProjectId) || state.projects[0];
 }
@@ -258,6 +301,8 @@ function screenToWorldY(screenY) {
   return screenY - state.view.y;
 }
 
+/* ─── Event Creation ─── */
+
 function createEvent(project, overrides = {}) {
   const date = overrides.date || project.originDate;
   const anchorX = worldXForDate(project, date);
@@ -310,7 +355,7 @@ function createDefaultProject(name = "Shared Timeline") {
   project.events.push(
     createEvent(project, {
       title: "Today",
-      body: "**The line starts here.**\n\nDrag empty space to move. Roll the wheel to zoom.",
+      body: "**The line starts here.**\n\nHover the timeline and click to add events. Drag to move. Scroll to zoom.",
       categoryId: "cat-milestone",
       x: 44,
       y: -190,
@@ -343,6 +388,8 @@ function createDefaultProject(name = "Shared Timeline") {
 
   return project;
 }
+
+/* ─── Normalization ─── */
 
 function normalizeSettings(rawSettings = {}) {
   return {
@@ -427,6 +474,8 @@ function normalizeProject(rawProject = {}) {
   return project;
 }
 
+/* ─── Persistence ─── */
+
 function load() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) {
@@ -465,6 +514,8 @@ function save() {
     }),
   );
 }
+
+/* ─── Sorting & Filtering ─── */
 
 function sortEvents(events) {
   return [...events].sort((a, b) => {
@@ -524,7 +575,7 @@ function renderMarkdown(markdown) {
 
   flushParagraph();
   flushList();
-  return blocks.join("") || "<p><span class=\"empty-state\">Empty event</span></p>";
+  return blocks.join("") || '<p><span class="empty-state">Empty event</span></p>';
 }
 
 function eventMatchesQuery(project, event, query) {
@@ -548,11 +599,15 @@ function visibleEvents(project) {
   return sortEvents(project.events.filter((event) => eventMatchesFilters(project, event)));
 }
 
+/* ─── SVG Helpers ─── */
+
 function svgNode(name, attrs = {}) {
   const node = document.createElementNS("http://www.w3.org/2000/svg", name);
   Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
   return node;
 }
+
+/* ─── Render: Project Controls ─── */
 
 function renderProjectControls() {
   const project = activeProject();
@@ -560,11 +615,12 @@ function renderProjectControls() {
     .map((item) => `<option value="${item.id}">${escapeHTML(item.name)}</option>`)
     .join("");
   els.projectSelect.value = project.id;
-  els.projectMeta.textContent = `${project.events.length} events / ${project.categories.length} categories`;
+  els.projectMeta.textContent = `${project.events.length} events · ${project.categories.length} categories`;
   els.buttons.pastToggle.classList.toggle("active", project.settings.allowPast);
   els.buttons.gridToggle.classList.toggle("active", project.settings.snapToGrid);
-  els.buttons.focus.classList.toggle("active", state.focusMode);
 }
+
+/* ─── Render: Timeline ─── */
 
 function tickSpec(pxPerDay) {
   if (pxPerDay >= 78) return { unit: "day", step: 1, label: "day" };
@@ -650,6 +706,7 @@ function renderTimeline() {
   const timelineY = worldToScreenY(0);
   const originX = worldToScreenX(0);
   const pxPerDay = BASE_DAY_PX * state.view.scale;
+  const isDark = state.theme === "dark";
 
   els.svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   els.svg.setAttribute("width", width);
@@ -662,7 +719,7 @@ function renderTimeline() {
       y: 0,
       width: originX,
       height,
-      fill: "rgba(0,0,0,0.2)",
+      fill: isDark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.06)",
     }));
   }
 
@@ -671,15 +728,16 @@ function renderTimeline() {
     y: Math.max(0, timelineY - 38),
     width,
     height: 76,
-    fill: "rgba(255,255,255,0.016)",
+    fill: isDark ? "rgba(255,255,255,0.016)" : "rgba(0,0,0,0.02)",
   }));
 
+  const lineColor = isDark ? "#c9c1b1" : "#8a8478";
   els.svg.appendChild(svgNode("line", {
     x1: project.settings.allowPast ? 0 : Math.max(originX, 0),
     y1: timelineY,
     x2: width,
     y2: timelineY,
-    stroke: "#c9c1b1",
+    stroke: lineColor,
     "stroke-opacity": "0.58",
     "stroke-width": "1.6",
   }));
@@ -688,11 +746,15 @@ function renderTimeline() {
   renderConnectors(project, width, timelineY);
   renderAnchors(project, timelineY);
   renderOrigin(originX, timelineY);
+  renderGhostDot(timelineY);
 
   els.zoomLabel.textContent = `${Math.round(state.view.scale * 100)}%`;
 }
 
 function renderTicks(project, width, timelineY, pxPerDay) {
+  const isDark = state.theme === "dark";
+  const tickColor = isDark ? "#c9c1b1" : "#8a8478";
+  const labelColor = isDark ? "#9a9384" : "#6b665c";
   const spec = tickSpec(pxPerDay);
   const startWorld = screenToWorldX(-160);
   const endWorld = screenToWorldX(width + 240);
@@ -705,7 +767,7 @@ function renderTicks(project, width, timelineY, pxPerDay) {
       y1: timelineY - tickHeight / 2,
       x2: x,
       y2: timelineY + tickHeight / 2,
-      stroke: "#c9c1b1",
+      stroke: tickColor,
       "stroke-opacity": tick.major ? "0.52" : "0.28",
       "stroke-width": tick.major ? "1" : "0.75",
     }));
@@ -713,7 +775,7 @@ function renderTicks(project, width, timelineY, pxPerDay) {
       const text = svgNode("text", {
         x: x + 7,
         y: timelineY + tickHeight / 2 + 17,
-        fill: "#9a9384",
+        fill: labelColor,
         "font-size": "10",
         "font-family": "ui-monospace, Consolas, monospace",
       });
@@ -725,6 +787,9 @@ function renderTicks(project, width, timelineY, pxPerDay) {
 }
 
 function renderOrigin(originX, timelineY) {
+  const isDark = state.theme === "dark";
+  const bgColor = isDark ? "#0b0b09" : "#f5f3ef";
+  const textColor = isDark ? "#ebe4d6" : "#1a1a17";
   const origin = svgNode("g");
   origin.appendChild(svgNode("line", {
     x1: originX,
@@ -740,13 +805,13 @@ function renderOrigin(originX, timelineY) {
     cy: timelineY,
     r: 5,
     fill: "#c99448",
-    stroke: "#0b0b09",
+    stroke: bgColor,
     "stroke-width": "2",
   }));
   const label = svgNode("text", {
     x: originX + 10,
     y: timelineY - 17,
-    fill: "#ebe4d6",
+    fill: textColor,
     "font-size": "11",
     "font-weight": "800",
     "font-family": "ui-monospace, Consolas, monospace",
@@ -755,6 +820,76 @@ function renderOrigin(originX, timelineY) {
   origin.appendChild(label);
   els.svg.appendChild(origin);
 }
+
+/* ─── Ghost Dot (click-on-line to add) ─── */
+
+function renderGhostDot(timelineY) {
+  if (!state.ghostDotVisible) return;
+
+  const isDark = state.theme === "dark";
+  const group = svgNode("g", { class: "ghost-dot-group visible" });
+
+  // Pulse ring
+  group.appendChild(svgNode("circle", {
+    cx: state.ghostDotScreenX,
+    cy: timelineY,
+    r: 8,
+    fill: "none",
+    stroke: "#c99448",
+    "stroke-width": "1.5",
+    class: "ghost-dot-pulse",
+  }));
+
+  // Main dot
+  group.appendChild(svgNode("circle", {
+    cx: state.ghostDotScreenX,
+    cy: timelineY,
+    r: 7,
+    fill: "#c99448",
+    opacity: "0.9",
+    stroke: isDark ? "#0b0b09" : "#f5f3ef",
+    "stroke-width": "2",
+    style: "cursor: pointer; pointer-events: auto;",
+  }));
+
+  // Plus icon
+  const plusSize = 4;
+  group.appendChild(svgNode("line", {
+    x1: state.ghostDotScreenX - plusSize,
+    y1: timelineY,
+    x2: state.ghostDotScreenX + plusSize,
+    y2: timelineY,
+    stroke: isDark ? "#0b0b09" : "#ffffff",
+    "stroke-width": "1.8",
+    "stroke-linecap": "round",
+  }));
+  group.appendChild(svgNode("line", {
+    x1: state.ghostDotScreenX,
+    y1: timelineY - plusSize,
+    x2: state.ghostDotScreenX,
+    y2: timelineY + plusSize,
+    stroke: isDark ? "#0b0b09" : "#ffffff",
+    "stroke-width": "1.8",
+    "stroke-linecap": "round",
+  }));
+
+  // Date label
+  const labelText = svgNode("text", {
+    x: state.ghostDotScreenX,
+    y: timelineY - 18,
+    fill: "#c99448",
+    "font-size": "11",
+    "font-weight": "700",
+    "font-family": "Inter, ui-sans-serif, system-ui, sans-serif",
+    "text-anchor": "middle",
+  });
+  labelText.textContent = state.ghostDotDate ? formatShortDate(state.ghostDotDate) : "";
+  group.appendChild(labelText);
+
+  els.svg.appendChild(group);
+}
+
+/* ─── Render: Visual Helpers ─── */
 
 function visualHeight(event) {
   return event.collapsed ? 64 : event.size.h;
@@ -840,6 +975,8 @@ function renderConnectors(project, width, timelineY) {
 }
 
 function renderAnchors(project, timelineY) {
+  const isDark = state.theme === "dark";
+  const bgColor = isDark ? "#0b0b09" : "#f5f3ef";
   const group = svgNode("g");
   visibleEvents(project).forEach((event) => {
     const x = worldToScreenX(worldXForDate(project, event.date));
@@ -850,12 +987,14 @@ function renderAnchors(project, timelineY) {
       r: 4,
       fill: eventColor(project, event),
       opacity: dim ? "0.28" : "1",
-      stroke: "#0b0b09",
+      stroke: bgColor,
       "stroke-width": "2",
     }));
   });
   els.svg.appendChild(group);
 }
+
+/* ─── Render: Cards ─── */
 
 function renderCards() {
   const project = activeProject();
@@ -883,7 +1022,7 @@ function renderCards() {
         <span class="card-dot"></span>
         <div class="card-title-block">
           <h3 class="card-title">${escapeHTML(event.title)}</h3>
-          <time class="card-date">${formatShortDate(event.date)}${event.lockDate ? " LOCK" : ""}</time>
+          <time class="card-date">${formatShortDate(event.date)}</time>
           <span class="card-category">${escapeHTML(eventCategoryName(project, event))}</span>
         </div>
         <div class="card-action-row">
@@ -904,6 +1043,8 @@ function renderCards() {
     els.cardLayer.appendChild(card);
   });
 }
+
+/* ─── Render: Minimap ─── */
 
 function getTimelineRange(project) {
   const rect = getViewportRect();
@@ -944,6 +1085,8 @@ function renderMiniMap() {
   els.miniMapWindow.style.width = `${Math.max(12, right - left)}px`;
 }
 
+/* ─── Render: Sidebar ─── */
+
 function renderSearchResults() {
   const project = activeProject();
   const query = state.searchQuery.trim();
@@ -959,7 +1102,7 @@ function renderSearchResults() {
   els.searchResults.innerHTML = matches.map((event) => `
     <button class="result-button" data-id="${event.id}" type="button">
       <span class="result-title">${escapeHTML(event.title)}</span>
-      <span class="result-meta">${formatShortDate(event.date)} / ${escapeHTML(eventCategoryName(project, event))}</span>
+      <span class="result-meta">${formatShortDate(event.date)} · ${escapeHTML(eventCategoryName(project, event))}</span>
     </button>
   `).join("");
 }
@@ -971,7 +1114,7 @@ function renderCategories() {
     : project.events.filter((event) => event.categoryId === id).length;
   const allButton = `
     <button class="category-button${state.activeCategoryId === "all" ? " active" : ""}" data-id="all" type="button">
-      <span class="chip" style="--category-color:#ebe4d6"></span>
+      <span class="chip" style="--category-color:var(--ink)"></span>
       <span class="category-name">All Events</span>
       <span class="category-count">${countFor("all")}</span>
       <span></span>
@@ -987,6 +1130,8 @@ function renderCategories() {
   `).join("");
   els.categoryList.innerHTML = allButton + categoryButtons;
 }
+
+/* ─── Master Render ─── */
 
 function render() {
   ensureView();
@@ -1017,6 +1162,8 @@ function jumpToEvent(eventId) {
   render();
 }
 
+/* ─── Event CRUD ─── */
+
 function addEventAtScreen(clientX, clientY, openEditor = true) {
   const project = activeProject();
   const rect = getViewportRect();
@@ -1038,9 +1185,27 @@ function addEventAtScreen(clientX, clientY, openEditor = true) {
   if (openEditor) openEventModal(event.id, true);
 }
 
+function addEventAtDate(date) {
+  const project = activeProject();
+  const anchorX = worldXForDate(project, date);
+  const event = createEvent(project, {
+    date,
+    x: anchorX + 44,
+    y: -190,
+    categoryId: state.activeCategoryId === "all" ? defaultCategoryId(project) : state.activeCategoryId,
+  });
+  project.events.push(event);
+  state.selectedEventId = event.id;
+  save();
+  render();
+  openEventModal(event.id, true);
+}
+
 function findEvent(id) {
   return activeProject().events.find((event) => event.id === id);
 }
+
+/* ─── Event Modal ─── */
 
 function populateEventCategorySelect(event) {
   const project = activeProject();
@@ -1070,8 +1235,6 @@ function openEventModal(eventId, isNew = false) {
   els.eventHeight.value = event.size.h;
   els.eventBody.value = event.body;
   els.fontSize.value = event.style.fontSize;
-  els.boldBtn.classList.toggle("active", event.style.bold);
-  els.italicBtn.classList.toggle("active", event.style.italic);
   els.textAlign.value = event.style.align;
   els.textColor.value = event.style.textColor;
   els.lockDateInput.checked = event.lockDate;
@@ -1079,6 +1242,12 @@ function openEventModal(eventId, isNew = false) {
   populateEventCategorySelect(event);
   updateDateLockState();
   renderImagePreview();
+
+  // Collapse advanced options by default for new events
+  if (isNew) {
+    els.advancedOptions.removeAttribute("open");
+  }
+
   els.eventModal.hidden = false;
   els.eventTitle.focus();
   els.eventTitle.select();
@@ -1127,8 +1296,8 @@ function saveEventFromModal(event) {
   edited.size.w = clamp(Number(els.eventWidth.value) || edited.size.w, 180, 720);
   edited.size.h = clamp(Number(els.eventHeight.value) || edited.size.h, 112, 640);
   edited.style.fontSize = clamp(Number(els.fontSize.value) || 15, 12, 28);
-  edited.style.bold = els.boldBtn.classList.contains("active");
-  edited.style.italic = els.italicBtn.classList.contains("active");
+  edited.style.bold = false;
+  edited.style.italic = false;
   edited.style.align = els.textAlign.value;
   edited.style.textColor = els.textColor.value || "#ebe4d6";
 
@@ -1150,12 +1319,15 @@ function deleteEditingEvent() {
   closeEventModal(false);
 }
 
+/* ─── Project Modal ─── */
+
 function openProjectModal(mode) {
   const project = activeProject();
   state.projectMode = mode;
   els.projectModalTitle.textContent = mode === "new" ? "New project" : "Rename project";
   els.projectNameInput.value = mode === "new" ? "" : project.name;
   els.projectModal.hidden = false;
+  closeProjectMenu();
   els.projectNameInput.focus();
   els.projectNameInput.select();
 }
@@ -1199,9 +1371,11 @@ function duplicateProject() {
   state.selectedEventId = null;
   save();
   render();
+  closeProjectMenu();
 }
 
 function deleteProject() {
+  closeProjectMenu();
   if (state.projects.length === 1) {
     const replacement = createDefaultProject("Shared Timeline");
     replacement.events = [];
@@ -1223,6 +1397,18 @@ function deleteProject() {
   save();
   resetView();
 }
+
+/* ─── Project Overflow Menu ─── */
+
+function toggleProjectMenu() {
+  els.projectMenu.hidden = !els.projectMenu.hidden;
+}
+
+function closeProjectMenu() {
+  els.projectMenu.hidden = true;
+}
+
+/* ─── Category Modal ─── */
 
 function openCategoryModal(id = null) {
   const project = activeProject();
@@ -1281,6 +1467,8 @@ function deleteCategory() {
   render();
   closeCategoryModal();
 }
+
+/* ─── Export / Import ─── */
 
 function stableEventForExport(project, event) {
   return {
@@ -1375,6 +1563,8 @@ function importProjectFile(file) {
   reader.readAsText(file);
 }
 
+/* ─── Interactions ─── */
+
 function startPan(event) {
   state.interaction = {
     type: "pan",
@@ -1435,15 +1625,41 @@ function applyCardPosition(timelineEvent, rawX, rawY) {
   timelineEvent.position.y = snap(worldToScreenY(rawY)) - state.view.y;
 }
 
+const GHOST_DOT_THRESHOLD = 24; // px from timeline to show ghost dot
+
 function onPointerMove(event) {
   const current = state.interaction;
+
   if (!current) {
     const project = activeProject();
     const rect = getViewportRect();
-    const worldX = screenToWorldX(event.clientX - rect.left);
+    const localX = event.clientX - rect.left;
+    const localY = event.clientY - rect.top;
+    const worldX = screenToWorldX(localX);
+    const timelineScreenY = worldToScreenY(0);
+
     els.hoverDate.textContent = formatShortDate(dateForWorldX(project, worldX));
+
+    // Ghost dot logic
+    const distFromLine = Math.abs(localY - timelineScreenY);
+    if (distFromLine <= GHOST_DOT_THRESHOLD && localX > 0 && localX < rect.width) {
+      const date = dateForWorldX(project, worldX);
+      const dateWorldX = worldXForDate(project, date);
+      state.ghostDotVisible = true;
+      state.ghostDotDate = date;
+      state.ghostDotScreenX = worldToScreenX(dateWorldX);
+      state.ghostDotScreenY = timelineScreenY;
+    } else {
+      state.ghostDotVisible = false;
+    }
+
+    // Re-render timeline to show/hide ghost dot
+    renderTimeline();
     return;
   }
+
+  // Hide ghost dot during any interaction
+  state.ghostDotVisible = false;
 
   if (current.type === "pan") {
     const dx = event.clientX - current.startX;
@@ -1539,6 +1755,8 @@ function moveViewFromMiniMap(clientX) {
   renderMiniMap();
 }
 
+/* ─── Toggles ─── */
+
 function toggleCollapseAll() {
   const project = activeProject();
   const shouldCollapse = project.events.some((event) => !event.collapsed);
@@ -1577,6 +1795,8 @@ function toggleGrid() {
   render();
 }
 
+/* ─── Keyboard ─── */
+
 function isTypingTarget(target) {
   return target.closest("input, textarea, select, [contenteditable='true']");
 }
@@ -1586,12 +1806,20 @@ function onKeyDown(event) {
     if (!els.eventModal.hidden) closeEventModal(true);
     if (!els.projectModal.hidden) closeProjectModal();
     if (!els.categoryModal.hidden) closeCategoryModal();
+    closeProjectMenu();
   }
   if (event.code === "KeyF" && !isTypingTarget(event.target)) {
     event.preventDefault();
     toggleFocus();
   }
+  // Ctrl+Shift+C to collapse all (keyboard shortcut for removed toolbar button)
+  if (event.code === "KeyC" && event.ctrlKey && event.shiftKey && !isTypingTarget(event.target)) {
+    event.preventDefault();
+    toggleCollapseAll();
+  }
 }
+
+/* ─── Wire Events ─── */
 
 function wireEvents() {
   els.projectSelect.addEventListener("change", () => {
@@ -1603,33 +1831,65 @@ function wireEvents() {
     resetView();
   });
 
+  // Project overflow menu
+  els.buttons.projectMenu.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleProjectMenu();
+  });
   els.buttons.newProject.addEventListener("click", () => openProjectModal("new"));
   els.buttons.renameProject.addEventListener("click", () => openProjectModal("rename"));
   els.buttons.duplicateProject.addEventListener("click", duplicateProject);
   els.buttons.deleteProject.addEventListener("click", deleteProject);
+
+  // Close menu when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".project-actions")) {
+      closeProjectMenu();
+    }
+  });
+
+  // Toolbar
   els.buttons.addToday.addEventListener("click", () => {
     const rect = getViewportRect();
     addEventAtScreen(rect.left + worldToScreenX(0), rect.top + worldToScreenY(0) - 24);
   });
   els.buttons.resetView.addEventListener("click", resetView);
-  els.buttons.focus.addEventListener("click", toggleFocus);
-  els.buttons.collapseAll.addEventListener("click", toggleCollapseAll);
-  els.buttons.pastToggle.addEventListener("click", togglePastDates);
-  els.buttons.gridToggle.addEventListener("click", toggleGrid);
   els.buttons.export.addEventListener("click", exportProject);
   els.buttons.import.addEventListener("click", () => els.importInput.click());
+  els.buttons.themeToggle.addEventListener("click", toggleTheme);
+
+  // Settings toggles in side dock
+  els.buttons.pastToggle.addEventListener("click", togglePastDates);
+  els.buttons.gridToggle.addEventListener("click", toggleGrid);
 
   els.importInput.addEventListener("change", () => {
     const [file] = els.importInput.files;
     if (file) importProjectFile(file);
   });
 
+  // Viewport interactions
   els.viewport.addEventListener("pointerdown", (event) => {
     if (event.target.closest(".event-card, .minimap")) return;
     if (event.button !== 0 && event.button !== 1) return;
     event.preventDefault();
     startPan(event);
   });
+
+  // Single-click on timeline to add event (ghost dot)
+  els.viewport.addEventListener("click", (event) => {
+    if (event.target.closest(".event-card, .minimap")) return;
+    if (state.interaction) return; // Don't add if we just finished panning
+
+    const rect = getViewportRect();
+    const localY = event.clientY - rect.top;
+    const timelineScreenY = worldToScreenY(0);
+    const distFromLine = Math.abs(localY - timelineScreenY);
+
+    if (distFromLine <= GHOST_DOT_THRESHOLD && state.ghostDotDate) {
+      addEventAtDate(state.ghostDotDate);
+    }
+  });
+
   els.viewport.addEventListener("dblclick", (event) => {
     if (event.target.closest(".event-card, .minimap")) return;
     addEventAtScreen(event.clientX, event.clientY);
@@ -1638,6 +1898,14 @@ function wireEvents() {
   els.viewport.addEventListener("pointermove", onPointerMove);
   els.viewport.addEventListener("pointerup", onPointerUp);
   els.viewport.addEventListener("pointercancel", onPointerUp);
+
+  // Hide ghost dot when leaving viewport
+  els.viewport.addEventListener("pointerleave", () => {
+    if (!state.interaction) {
+      state.ghostDotVisible = false;
+      renderTimeline();
+    }
+  });
 
   els.miniMap.addEventListener("pointerdown", (event) => {
     event.preventDefault();
@@ -1678,6 +1946,7 @@ function wireEvents() {
     startCardDrag(event, card, id);
   });
 
+  // Search
   els.searchInput.addEventListener("input", () => {
     state.searchQuery = els.searchInput.value.trim();
     render();
@@ -1691,6 +1960,8 @@ function wireEvents() {
     const button = event.target.closest(".result-button");
     if (button) jumpToEvent(button.dataset.id);
   });
+
+  // Categories
   els.categoryList.addEventListener("click", (event) => {
     const button = event.target.closest(".category-button");
     if (!button) return;
@@ -1704,6 +1975,7 @@ function wireEvents() {
   });
   els.addCategory.addEventListener("click", () => openCategoryModal());
 
+  // Global events
   window.addEventListener("pointermove", onPointerMove);
   window.addEventListener("pointerup", onPointerUp);
   window.addEventListener("pointercancel", onPointerUp);
@@ -1713,12 +1985,11 @@ function wireEvents() {
     render();
   });
 
+  // Event modal
   els.eventForm.addEventListener("submit", saveEventFromModal);
   document.querySelectorAll("[data-close-event]").forEach((button) => {
     button.addEventListener("click", () => closeEventModal(true));
   });
-  els.boldBtn.addEventListener("click", () => els.boldBtn.classList.toggle("active"));
-  els.italicBtn.addEventListener("click", () => els.italicBtn.classList.toggle("active"));
   els.lockDateInput.addEventListener("change", updateDateLockState);
   els.imageInput.addEventListener("change", () => {
     const [file] = els.imageInput.files;
@@ -1737,11 +2008,13 @@ function wireEvents() {
   });
   els.deleteEvent.addEventListener("click", deleteEditingEvent);
 
+  // Project modal
   els.projectForm.addEventListener("submit", saveProjectFromModal);
   document.querySelectorAll("[data-close-project]").forEach((button) => {
     button.addEventListener("click", closeProjectModal);
   });
 
+  // Category modal
   els.categoryForm.addEventListener("submit", saveCategoryFromModal);
   els.deleteCategory.addEventListener("click", deleteCategory);
   document.querySelectorAll("[data-close-category]").forEach((button) => {
@@ -1749,7 +2022,10 @@ function wireEvents() {
   });
 }
 
+/* ─── Init ─── */
+
 function init() {
+  initTheme();
   load();
   ensureView();
   wireEvents();
