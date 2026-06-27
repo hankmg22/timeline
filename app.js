@@ -898,14 +898,16 @@ function visualHeight(event) {
 function eventScreenRect(event) {
   const left = worldToScreenX(event.position.x);
   const top = worldToScreenY(event.position.y);
+  const w = event.size.w * state.view.scale;
+  const h = visualHeight(event) * state.view.scale;
   return {
     id: event.id,
     left,
     top,
-    right: left + event.size.w,
-    bottom: top + visualHeight(event),
-    width: event.size.w,
-    height: visualHeight(event),
+    right: left + w,
+    bottom: top + h,
+    width: w,
+    height: h,
   };
 }
 
@@ -1014,8 +1016,10 @@ function renderCards() {
     card.dataset.id = event.id;
     card.style.setProperty("--event-color", color);
     card.style.setProperty("--body-color", event.style.textColor);
-    card.style.width = `${event.size.w}px`;
-    card.style.height = `${visualHeight(event)}px`;
+    card.style.width = `${rect.width}px`;
+    card.style.height = `${rect.height}px`;
+    card.style.minWidth = "0";
+    card.style.minHeight = "0";
     card.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0)`;
     card.innerHTML = `
       <header class="card-top">
@@ -1689,8 +1693,8 @@ function onPointerMove(event) {
   if (current.type === "resize-card") {
     const timelineEvent = findEvent(current.id);
     if (!timelineEvent) return;
-    timelineEvent.size.w = clamp(current.originalW + event.clientX - current.startX, 180, 720);
-    timelineEvent.size.h = clamp(current.originalH + event.clientY - current.startY, 112, 640);
+    timelineEvent.size.w = clamp(current.originalW + (event.clientX - current.startX) / state.view.scale, 180, 720);
+    timelineEvent.size.h = clamp(current.originalH + (event.clientY - current.startY) / state.view.scale, 112, 640);
     renderTimeline();
     renderCards();
     renderMiniMap();
