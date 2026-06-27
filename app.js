@@ -14,6 +14,21 @@ const defaultCategorySeeds = [
   ["cat-health", "Health", "#b85e51"],
 ];
 
+const monthColors = [
+  "#5b88c8", // Jan: Soft Blue
+  "#8a7bc8", // Feb: Soft Lavender
+  "#52a59a", // Mar: Soft Sage/Teal
+  "#70a256", // Apr: Soft Green
+  "#a8b04a", // May: Soft Olive/Lime
+  "#cda24b", // Jun: Soft Amber
+  "#cd804b", // Jul: Soft Orange
+  "#c05646", // Aug: Soft Red/Coral
+  "#cd5b76", // Sep: Soft Rose
+  "#b268b8", // Oct: Soft Violet
+  "#907a68", // Nov: Soft Warm Gray/Brown
+  "#4b68a8", // Dec: Soft Indigo
+];
+
 const els = {
   viewport: document.getElementById("viewport"),
   svg: document.getElementById("timelineSvg"),
@@ -44,6 +59,7 @@ const els = {
     import: document.getElementById("importBtn"),
     export: document.getElementById("exportBtn"),
     themeToggle: document.getElementById("themeToggleBtn"),
+    themeToggleDock: document.getElementById("themeToggleDockBtn"),
   },
   projectMenu: document.getElementById("projectMenu"),
   themeIcon: document.getElementById("themeIcon"),
@@ -53,8 +69,6 @@ const els = {
   eventTitle: document.getElementById("eventTitle"),
   eventDate: document.getElementById("eventDate"),
   eventCategory: document.getElementById("eventCategory"),
-  eventWidth: document.getElementById("eventWidth"),
-  eventHeight: document.getElementById("eventHeight"),
   eventBody: document.getElementById("eventBody"),
   fontSize: document.getElementById("fontSize"),
   textAlign: document.getElementById("textAlign"),
@@ -155,6 +169,7 @@ function yearFromISO(value) {
 
 function formatShortDate(value) {
   return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -221,12 +236,16 @@ function initTheme() {
 function applyTheme() {
   document.documentElement.setAttribute("data-theme", state.theme);
   updateThemeIcon();
+  if (els.buttons.themeToggleDock) {
+    els.buttons.themeToggleDock.classList.toggle("active", state.theme === "light");
+  }
 }
 
 function toggleTheme() {
   state.theme = state.theme === "dark" ? "light" : "dark";
   localStorage.setItem(THEME_KEY, state.theme);
   applyTheme();
+  render();
 }
 
 function updateThemeIcon() {
@@ -723,13 +742,32 @@ function renderTimeline() {
     }));
   }
 
-  els.svg.appendChild(svgNode("rect", {
-    x: 0,
-    y: Math.max(0, timelineY - 38),
-    width,
-    height: 76,
-    fill: isDark ? "rgba(255,255,255,0.016)" : "rgba(0,0,0,0.02)",
-  }));
+  // Color code the months on the actual timeline itself
+  const startWorldX = screenToWorldX(0);
+  const endWorldX = screenToWorldX(width);
+  const startMonth = monthIndex(dateForWorldX(project, startWorldX));
+  const endMonth = monthIndex(dateForWorldX(project, endWorldX));
+
+  for (let mIdx = startMonth - 1; mIdx <= endMonth + 1; mIdx++) {
+    const thisMonthISO = isoFromMonthIndex(mIdx);
+    const nextMonthISO = isoFromMonthIndex(mIdx + 1);
+    const wXStart = worldXForDate(project, thisMonthISO);
+    const wXEnd = worldXForDate(project, nextMonthISO);
+    const sXStart = worldToScreenX(wXStart);
+    const sXEnd = worldToScreenX(wXEnd);
+
+    if (sXEnd <= 0 || sXStart >= width) continue;
+
+    const monthNum = ((mIdx % 12) + 12) % 12;
+    els.svg.appendChild(svgNode("rect", {
+      x: sXStart,
+      width: Math.max(0, sXEnd - sXStart),
+      y: Math.max(0, timelineY - 38),
+      height: 76,
+      fill: monthColors[monthNum],
+      opacity: isDark ? "0.07" : "0.15",
+    }));
+  }
 
   const lineColor = isDark ? "#c9c1b1" : "#8a8478";
   els.svg.appendChild(svgNode("line", {
@@ -1235,8 +1273,6 @@ function openEventModal(eventId, isNew = false) {
   els.eventTitle.value = event.title;
   els.eventDate.value = event.date;
   els.eventDate.min = project.settings.allowPast ? "" : project.originDate;
-  els.eventWidth.value = event.size.w;
-  els.eventHeight.value = event.size.h;
   els.eventBody.value = event.body;
   els.fontSize.value = event.style.fontSize;
   els.textAlign.value = event.style.align;
@@ -1297,8 +1333,6 @@ function saveEventFromModal(event) {
   edited.image = state.modalImageData;
   edited.lockDate = els.lockDateInput.checked;
   edited.collapsed = els.collapsedInput.checked;
-  edited.size.w = clamp(Number(els.eventWidth.value) || edited.size.w, 180, 720);
-  edited.size.h = clamp(Number(els.eventHeight.value) || edited.size.h, 112, 640);
   edited.style.fontSize = clamp(Number(els.fontSize.value) || 15, 12, 28);
   edited.style.bold = false;
   edited.style.italic = false;
@@ -1861,6 +1895,9 @@ function wireEvents() {
   els.buttons.export.addEventListener("click", exportProject);
   els.buttons.import.addEventListener("click", () => els.importInput.click());
   els.buttons.themeToggle.addEventListener("click", toggleTheme);
+  if (els.buttons.themeToggleDock) {
+    els.buttons.themeToggleDock.addEventListener("click", toggleTheme);
+  }
 
   // Settings toggles in side dock
   els.buttons.pastToggle.addEventListener("click", togglePastDates);
