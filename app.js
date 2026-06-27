@@ -933,11 +933,17 @@ function visualHeight(event) {
   return event.collapsed ? 64 : event.size.h;
 }
 
+/** Dampened scale for cards — zoom changes spacing, not card size dramatically. */
+function cardScale() {
+  return clamp(Math.pow(state.view.scale, 0.3), 0.55, 1.3);
+}
+
 function eventScreenRect(event) {
   const left = worldToScreenX(event.position.x);
   const top = worldToScreenY(event.position.y);
-  const w = event.size.w * state.view.scale;
-  const h = visualHeight(event) * state.view.scale;
+  const cs = cardScale();
+  const w = event.size.w * cs;
+  const h = visualHeight(event) * cs;
   return {
     id: event.id,
     left,
@@ -1727,8 +1733,9 @@ function onPointerMove(event) {
   if (current.type === "resize-card") {
     const timelineEvent = findEvent(current.id);
     if (!timelineEvent) return;
-    timelineEvent.size.w = clamp(current.originalW + (event.clientX - current.startX) / state.view.scale, 180, 720);
-    timelineEvent.size.h = clamp(current.originalH + (event.clientY - current.startY) / state.view.scale, 112, 640);
+    const cs = cardScale();
+    timelineEvent.size.w = clamp(current.originalW + (event.clientX - current.startX) / cs, 180, 720);
+    timelineEvent.size.h = clamp(current.originalH + (event.clientY - current.startY) / cs, 112, 640);
     renderTimeline();
     renderCards();
     renderMiniMap();
