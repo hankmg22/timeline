@@ -354,8 +354,8 @@ function createEvent(project, overrides = {}) {
   };
 }
 
-function createDefaultProject(name = "Shared Timeline") {
-  const originDate = todayISO();
+function createDefaultProject(name = "EI2 Marketing Campaign") {
+  const originDate = "2026-06-25";
   const project = {
     schemaVersion: VERSION,
     id: uid("project"),
@@ -367,42 +367,98 @@ function createDefaultProject(name = "Shared Timeline") {
       allowPast: true,
       snapToGrid: true,
     },
-    categories: defaultCategories(),
+    categories: [
+      { id: "cat-teaser", name: "Concept & Teasers", color: "#e74c3c" },   // Red
+      { id: "cat-testing", name: "Content & Formats", color: "#3498db" },  // Blue
+      { id: "cat-hype", name: "Pre-Launch & Hype", color: "#111111" },     // Black
+      { id: "cat-launch", name: "Launch Phase", color: "#7f8c8d" },        // Silver/White
+    ],
     events: [],
   };
 
   project.events.push(
     createEvent(project, {
-      title: "Today",
-      body: "**The line starts here.**\n\nHover the timeline and click to add events. Drag to move. Scroll to zoom.",
-      categoryId: "cat-milestone",
-      x: 44,
-      y: -190,
+      title: "Jonus Type Teaser Post",
+      date: "2026-06-26",
+      body: "Initial teaser post in the 'Jonus' aesthetic. High focus on streetwear visual style. Inspired by streetwear culture and nostalgia.\n\n[Watch TikTok Video](https://www.tiktok.com/@koni.clo/video/7612438429648882975)\n\n*\"I made a minecraft zipup follow ig: @koni.clo #minecraft #nostalgia #minecraftart #minecraftjava #streetwear\"*",
+      categoryId: "cat-teaser",
+      x: 50,
+      y: -220,
       w: 300,
-      h: 176,
-      bold: true,
+      h: 220,
+      image: "https://res.craft.do/user/full/c92e92e3-0eb3-06e1-5c2a-0517392cfca7/doc/9820dc87-1ebf-4d3c-a097-ab3feba43f23/0EFD87BA-7B39-4AFB-99B6-1DBB7E6A2494_2/JRt2nceeplfb69bE6n3Usep2g82V0VgOBo8KyEVLkx8z/Screenshot%202026-06-25%20at%203.35.02PM.png"
     }),
     createEvent(project, {
-      title: "Planning window",
-      date: addDaysISO(originDate, 14),
-      body: "- Trips\n- Deadlines\n- Shared plans\n- Images and notes",
-      categoryId: "cat-personal",
-      x: BASE_DAY_PX * 14 - 108,
-      y: 88,
-      w: 304,
-      h: 178,
+      title: "Introduce EI2 Concept",
+      date: "2026-06-29",
+      body: "Official introduction of the **Everything In Twos (EI2)** identity. Start posting across TikTok and IG Reels to test different content formats, aesthetics, and sound templates.",
+      categoryId: "cat-testing",
+      x: 350,
+      y: 100,
+      w: 320,
+      h: 220,
+      image: "https://res.craft.do/user/full/c92e92e3-0eb3-06e1-5c2a-0517392cfca7/doc/9820dc87-1ebf-4d3c-a097-ab3feba43f23/DE33F04F-5391-4776-AF23-BC76FA72DD42_2/vIFPTVETQZgELJD0fbWqHuRVankXEa8whK4IpfXiyocz/Screenshot%202026-06-25%20at%203.31.06PM.png"
     }),
     createEvent(project, {
-      title: "Locked milestone",
-      date: addDaysISO(originDate, 45),
-      body: "Dates can be locked while cards remain movable.",
-      categoryId: "cat-work",
-      x: BASE_DAY_PX * 45 - 38,
-      y: -230,
-      w: 312,
-      h: 170,
-      lockDate: true,
+      title: "Test Content Formats",
+      date: "2026-07-02",
+      body: "Analyze metrics for high-effort vs quick-cut formats. Test ASMR zipper sounds, fabric close-ups, and fit checks.",
+      categoryId: "cat-testing",
+      x: 580,
+      y: -190,
+      w: 290,
+      h: 160
     }),
+    createEvent(project, {
+      title: "First Viral Format Push",
+      date: "2026-07-07",
+      body: "Identify the first viral format. What do people react to? Is it the nostalgia angle or the styling guide? Pivot all content production to this format.",
+      categoryId: "cat-teaser",
+      x: 960,
+      y: 80,
+      w: 300,
+      h: 170
+    }),
+    createEvent(project, {
+      title: "Reaction Video Response",
+      date: "2026-07-10",
+      body: "Double down on user comments. Make video replies to top comments asking about sizing and materials to drive community interaction.",
+      categoryId: "cat-testing",
+      x: 1190,
+      y: -240,
+      w: 290,
+      h: 160
+    }),
+    createEvent(project, {
+      title: "Build Hoodie Desire",
+      date: "2026-07-15",
+      body: "Showcase product details: heavy cotton weight, high-quality embroidery, and unique custom zip-puller. Make people say 'I need this.'",
+      categoryId: "cat-hype",
+      x: 1570,
+      y: 120,
+      w: 300,
+      h: 160
+    }),
+    createEvent(project, {
+      title: "Launch Announcement & Countdown",
+      date: "2026-07-21",
+      body: "Announce the release date. Open the email waitlist and start a 7-day countdown on social channels. Post teasers highlighting the limited quantity.",
+      categoryId: "cat-hype",
+      x: 2020,
+      y: -200,
+      w: 300,
+      h: 170
+    }),
+    createEvent(project, {
+      title: "EI2 Hoodie Launch Day",
+      date: "2026-07-28",
+      body: "**Drop is live.**\n\nSend email notification to waitlist. Post site link on all bios. Monitor orders, update inventory status, and post live packaging videos to sustain momentum.",
+      categoryId: "cat-launch",
+      x: 2550,
+      y: 100,
+      w: 310,
+      h: 170
+    })
   );
 
   return project;
@@ -510,12 +566,23 @@ function load() {
     const projects = Array.isArray(data.projects)
       ? data.projects.map(normalizeProject)
       : [normalizeProject(data.project || data)];
-    state.projects = projects.length ? projects : [createDefaultProject()];
-    state.activeProjectId = data.activeProjectId || state.projects[0].id;
+    
+    // Inject the new EI2 Marketing Campaign project if not present
+    const hasEI2 = projects.some((p) => p.name.includes("EI2"));
+    if (!hasEI2) {
+      const ei2Project = createDefaultProject();
+      projects.unshift(ei2Project);
+      state.activeProjectId = ei2Project.id;
+    } else {
+      state.activeProjectId = data.activeProjectId || projects[0].id;
+    }
+    state.projects = projects;
+    save();
   } catch {
     const project = createDefaultProject();
     state.projects = [project];
     state.activeProjectId = project.id;
+    save();
   }
 }
 
